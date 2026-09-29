@@ -1,0 +1,8 @@
+{
+  "name": "SlideCraft AI - Educational Presentation & Visual Prompter Studio",
+  "description": "Transform teaching materials, lecture notes, syllabus, and media into structured, high-impact presentation slide decks with AI-crafted visual & image prompts for educators.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

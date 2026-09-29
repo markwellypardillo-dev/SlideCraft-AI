@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Teacher and administrator profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "description": "Teacher email address" },
+        "displayName": { "type": "string", "description": "Teacher full name or display name" },
+        "photoURL": { "type": "string", "description": "Avatar photo URL" },
+        "role": { "type": "string", "enum": ["admin", "educator", "pro_scholar"], "description": "Access authorization role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Profile update timestamp" }
+      },
+      "required": ["id", "email", "createdAt", "updatedAt"]
+    },
+    "AppAccount": {
+      "title": "AppAccount",
+      "description": "Custom registered email and password account stored directly in app database",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Account unique ID" },
+        "email": { "type": "string", "description": "Normalized email address" },
+        "passwordHash": { "type": "string", "description": "Secure password record" },
+        "displayName": { "type": "string", "description": "Teacher full name" },
+        "role": { "type": "string", "enum": ["admin", "educator", "pro_scholar"], "description": "Account role" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Registration timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "email", "passwordHash", "createdAt", "updatedAt"]
+    },
+    "Deck": {
+      "title": "Deck",
+      "description": "Educational slide deck presentation generated for a teacher",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Deck unique document ID" },
+        "userId": { "type": "string", "description": "Owner teacher user ID" },
+        "title": { "type": "string", "maxLength": 300, "description": "Presentation title" },
+        "subject": { "type": "string", "maxLength": 100, "description": "Subject or course name" },
+        "targetAudience": { "type": "string", "description": "Grade level or audience" },
+        "gradeLevel": { "type": "string", "description": "Specific grade level" },
+        "deckLength": { "type": "string", "description": "Length classification" },
+        "slideTone": { "type": "string", "description": "Tone classification" },
+        "session": { "type": "string", "description": "Curriculum session identifier" },
+        "illustrationStyle": { "type": "string", "description": "Art illustration style" },
+        "colorTheme": { "type": "string", "description": "Color theme palette name" },
+        "colorPalette": { "type": "object", "description": "Theme color configuration" },
+        "totalEstimatedMinutes": { "type": "number", "description": "Estimated presentation minutes" },
+        "pedagogyNotes": { "type": "string", "description": "Pedagogical delivery notes" },
+        "sourceSummary": { "type": "string", "description": "Summary of source materials" },
+        "slides": { "type": "array", "description": "Structured slide objects" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Last update timestamp" }
+      },
+      "required": ["id", "userId", "title", "subject", "slides", "createdAt", "updatedAt"]
+    },
+    "SystemLog": {
+      "title": "SystemLog",
+      "description": "Real-time audit and operations logs recorded by the SlideCraft AI platform",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Log record ID" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Log event timestamp" },
+        "level": { "type": "string", "enum": ["INFO", "WARN", "ERROR", "SUCCESS", "DEBUG"] },
+        "category": { "type": "string", "description": "Log category" },
+        "action": { "type": "string", "description": "Event action name" },
+        "userEmail": { "type": "string", "description": "Acting user email or system" },
+        "userId": { "type": "string", "description": "Optional actor UID" },
+        "details": { "type": "string", "description": "Descriptive message" },
+        "metadata": { "type": "object", "description": "Additional diagnostic payload" }
+      },
+      "required": ["id", "timestamp", "level", "category", "action", "details"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Private teacher profile documents"
+    },
+    "/app_accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/AppAccount" },
+      "description": "App database registered accounts with email and password"
+    },
+    "/decks/{deckId}": {
+      "schema": { "$ref": "#/entities/Deck" },
+      "description": "Presentation slide decks created by teachers"
+    },
+    "/system_logs/{logId}": {
+      "schema": { "$ref": "#/entities/SystemLog" },
+      "description": "System audit and operation event logs"
+    }
+  }
+}
