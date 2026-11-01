@@ -3,25 +3,24 @@ import {
   FolderGit2,
   Image as ImageIcon,
   BarChart3,
-  BookOpen,
   GraduationCap,
   Settings,
+  History,
   Sun,
   Moon,
   Monitor,
   LogIn,
   LogOut,
-  History,
-  Cloud,
-  X,
-  ShieldCheck,
-  Activity,
-  Layers,
   LayoutTemplate,
+  Activity,
+  X,
+  Layers,
+  ChevronRight,
+  ShieldCheck,
+  BookOpenCheck,
 } from 'lucide-react';
 import { ActiveNavTab, SlideDeck, ThemeMode } from '../types/deck';
 import { User as FirebaseUser } from 'firebase/auth';
-import { PWAInstallButton } from './PWAInstallButton';
 
 interface SidebarProps {
   activeTab: ActiveNavTab;
@@ -58,16 +57,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setThemeMode,
   toggleTheme,
   totalSlides,
-  wordCount,
+  wordCount: _wordCount,
   hasDeck,
-  onOpenAccessibility,
-  onOpenCompanion,
   currentUser,
   onOpenAuth,
   onSignOut,
   savedDecks = [],
-  onSelectDeck,
-  currentDeck,
+  onSelectDeck: _onSelectDeck,
+  currentDeck: _currentDeck,
   isMobileOpen = false,
   onCloseMobile,
   workspaceMode = 'studio',
@@ -76,40 +73,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenWorkspaceSelector,
   onOpenTemplateArchitect,
 }) => {
-
   const [isHovered, setIsHovered] = useState<boolean>(false);
 
-  // Expanded on desktop when hovered, or on mobile when drawer is open
+  // Expanded on desktop when hovered, or on mobile when drawer is triggered
   const isExpanded = isHovered || isMobileOpen;
 
   interface NavItem {
-    id: ActiveNavTab;
+    id: ActiveNavTab | 'template_architect';
     label: string;
     subtitle: string;
     icon: React.ComponentType<{ className?: string }>;
     badge?: string;
   }
 
-  interface NavCategory {
+  interface NavGroup {
     category: string;
     items: NavItem[];
   }
 
-  const navCategories: NavCategory[] = [
+  const navGroups: NavGroup[] = [
     {
       category: 'Create & Design',
       items: [
         {
-          id: 'generator' as ActiveNavTab,
+          id: 'generator',
           label: 'Deck Generator',
           subtitle: 'Upload & Architect',
           icon: FolderGit2,
-          badge: hasDeck ? `${totalSlides} slides` : undefined,
+          badge: hasDeck ? `${totalSlides}s` : undefined,
+        },
+        {
+          id: 'educator_toolkit',
+          label: 'Educator Toolkit',
+          subtitle: 'Lesson Plans & Rubrics',
+          icon: BookOpenCheck,
+          badge: '4 Tools',
         },
         ...(isAdmin
           ? [
               {
-                id: 'template_architect' as any,
+                id: 'template_architect' as const,
                 label: 'Master Templates',
                 subtitle: 'Canva & PPT Studio',
                 icon: LayoutTemplate,
@@ -118,14 +121,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             ]
           : []),
         {
-          id: 'visual_blueprint' as ActiveNavTab,
+          id: 'visual_blueprint',
           label: 'Visual Prompts',
           subtitle: 'DALL-E & Midjourney',
           icon: ImageIcon,
           badge: hasDeck ? `${totalSlides}` : undefined,
         },
         {
-          id: 'assessments' as ActiveNavTab,
+          id: 'assessments',
           label: 'Assessments',
           subtitle: 'Quizzes & Checks',
           icon: BarChart3,
@@ -137,13 +140,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       category: 'Present & Deliver',
       items: [
         {
-          id: 'presenter_view' as ActiveNavTab,
+          id: 'presenter_view',
           label: 'Practice Mode',
           subtitle: 'Teleprompter & Timer',
           icon: GraduationCap,
         },
         {
-          id: 'export_settings' as ActiveNavTab,
+          id: 'export_settings',
           label: 'Export Studio',
           subtitle: 'PPTX, Word & PDF',
           icon: Settings,
@@ -154,7 +157,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       category: 'Library',
       items: [
         {
-          id: 'curriculum_library' as ActiveNavTab,
+          id: 'curriculum_library',
           label: 'Executed History',
           subtitle: 'Past Decks & Docs',
           icon: History,
@@ -171,9 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       } else if (onToggleWorkspaceMode) {
         onToggleWorkspaceMode('admin');
       }
-      if (onCloseMobile) {
-        onCloseMobile();
-      }
+      if (onCloseMobile) onCloseMobile();
       return;
     }
 
@@ -181,171 +182,228 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onToggleWorkspaceMode('studio');
     }
     setActiveTab(tab as ActiveNavTab);
-    if (onCloseMobile) {
-      onCloseMobile();
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  const cycleTheme = () => {
+    if (setThemeMode) {
+      const nextMode: ThemeMode =
+        themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'system' : 'light';
+      setThemeMode(nextMode);
+    } else {
+      toggleTheme?.();
     }
   };
 
   return (
     <>
-      {/* Mobile Backdrop Overlay (only on small screens when drawer is open) */}
+      {/* Mobile Backdrop Overlay */}
       {isMobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-zinc-950/60 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-md md:hidden animate-in fade-in duration-200"
           aria-hidden="true"
         />
       )}
 
-      {/* Main Sidebar (Desktop: hover rail / Mobile: slide-in drawer) */}
+      {/* Spatial Computing Glass Floating Container */}
       <aside
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        className={`fixed top-0 left-0 h-screen z-50 transition-all duration-300 ease-in-out flex flex-col justify-between ${
+        className={`fixed left-3 md:left-5 top-1/2 -translate-y-1/2 z-50 flex flex-col transition-all duration-300 ease-out select-none backdrop-blur-2xl ${
           isDark
-            ? 'bg-zinc-950/95 text-zinc-100 backdrop-blur-xl shadow-soft-xl'
-            : 'bg-white/95 text-zinc-900 backdrop-blur-xl shadow-soft-lg'
+            ? 'bg-zinc-950/80 border border-white/10 text-white'
+            : 'bg-white/85 border border-slate-200/90 text-slate-900'
         } ${
-          // Mobile visibility
+          isExpanded
+            ? isDark
+              ? 'w-64 px-3.5 py-4 rounded-[28px] h-[80vh] max-h-[740px] justify-between shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_35px_rgba(99,102,241,0.2)]'
+              : 'w-64 px-3.5 py-4 rounded-[28px] h-[80vh] max-h-[740px] justify-between shadow-[0_20px_50px_rgba(0,0,0,0.12),0_0_25px_rgba(99,102,241,0.08)]'
+            : isDark
+              ? 'w-[60px] px-2 py-3.5 items-center rounded-full h-fit max-h-[85vh] justify-center gap-1.5 shadow-[0_20px_45px_rgba(0,0,0,0.7),0_0_20px_rgba(99,102,241,0.12)]'
+              : 'w-[60px] px-2 py-3.5 items-center rounded-full h-fit max-h-[85vh] justify-center gap-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.08),0_2px_8px_rgba(0,0,0,0.04)]'
+        } ${
           isMobileOpen
-            ? 'translate-x-0 w-72 md:w-64'
-            : '-translate-x-full md:translate-x-0'
-        } ${
-          // Desktop width (expands on hover)
-          isHovered ? 'md:w-64 md:shadow-soft-2xl' : 'md:w-20'
+            ? 'translate-x-0 opacity-100 pointer-events-auto'
+            : 'max-md:-translate-x-28 max-md:opacity-0 max-md:pointer-events-none'
         }`}
       >
-        {/* Top: App Logo & Header */}
-        <div className="flex flex-col">
-          <div className="h-16 flex items-center justify-between px-4">
-            <div className="flex items-center gap-3 w-full text-left">
-              <div className={`relative w-10 h-10 rounded-2xl flex items-center justify-center shadow-soft-sm transition-transform duration-200 shrink-0 ${
-                isAdmin
-                  ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 text-white'
-                  : isDark ? 'bg-white text-zinc-950' : 'bg-zinc-900 text-white'
-              }`}>
-                {isAdmin ? <ShieldCheck className="w-5 h-5" /> : <FolderGit2 className="w-5 h-5" />}
-              </div>
-
-              {isExpanded && (
-                <div className="overflow-hidden whitespace-nowrap flex-1">
-                  <span className={`font-display font-bold text-sm tracking-tight block ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+        {/* Top Header & Navigation Group */}
+        <div className="flex flex-col w-full overflow-hidden">
+          {/* Header Bar only when expanded */}
+          {isExpanded && (
+            <div
+              className={`flex items-center justify-between px-2 pt-1 pb-3 mb-1 border-b ${
+                isDark ? 'border-white/10' : 'border-slate-200/80'
+              } animate-in fade-in duration-200`}
+            >
+              <div className="flex items-center gap-2.5 overflow-hidden">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-soft-xs shrink-0">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col leading-tight truncate">
+                  <span
+                    className={`font-display font-extrabold text-xs tracking-tight truncate ${
+                      isDark ? 'text-white' : 'text-slate-900'
+                    }`}
+                  >
                     SlideCraft AI
                   </span>
-                  <span className={`text-[11px] font-medium flex items-center gap-1 ${
-                    isAdmin ? 'text-purple-400 font-bold' : isDark ? 'text-zinc-400' : 'text-zinc-500'
-                  }`}>
-                    {isAdmin ? 'Admin Console' : 'Presentation Studio'}
+                  <span
+                    className={`text-[10px] font-medium truncate ${
+                      isDark ? 'text-indigo-300/80' : 'text-slate-500'
+                    }`}
+                  >
+                    {workspaceMode === 'admin' ? 'Admin Center' : 'Presentation Studio'}
                   </span>
                 </div>
-              )}
+              </div>
 
-              {/* Close button on mobile */}
               {isMobileOpen && onCloseMobile && (
                 <button
                   onClick={onCloseMobile}
-                  className={`p-2 rounded-xl md:hidden cursor-pointer ${
-                    isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-                  }`}
+                  className={`p-1 rounded-lg ${
+                    isDark
+                      ? 'text-white/50 hover:text-white hover:bg-white/10'
+                      : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                  } md:hidden`}
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               )}
             </div>
-          </div>
-
-          {/* Admin Workspace Mode Switcher Tile (if Admin user) */}
-          {isAdmin && (
-            <div className="px-2.5 pt-1 pb-2">
-              <button
-                onClick={() => {
-                  if (onToggleWorkspaceMode) {
-                    onToggleWorkspaceMode(workspaceMode === 'admin' ? 'studio' : 'admin');
-                  }
-                  if (onCloseMobile) onCloseMobile();
-                }}
-                className={`w-full p-2.5 rounded-2xl text-left transition-all duration-200 cursor-pointer shadow-soft-xs flex items-center gap-3 ${
-                  workspaceMode === 'admin'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-soft-sm'
-                    : isDark
-                    ? 'bg-zinc-900 hover:bg-zinc-850 text-purple-300'
-                    : 'bg-purple-50 hover:bg-purple-100 text-purple-900'
-                }`}
-                title="Switch Workspace Mode"
-              >
-                <Activity className="w-4 h-4 shrink-0" />
-                {isExpanded && (
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-extrabold truncate">
-                      {workspaceMode === 'admin' ? '🛡️ Admin Console Active' : '⚡ Open Admin Center'}
-                    </div>
-                    <div className="text-[10px] opacity-80 truncate">
-                      {workspaceMode === 'admin' ? 'Telemetry & Logs' : 'Manage App & Users'}
-                    </div>
-                  </div>
-                )}
-              </button>
-            </div>
           )}
 
-          {/* Categorized Navigation Items */}
-          <div className="py-2 px-2.5 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)] scrollbar-none">
-            {navCategories.map((group, groupIdx) => (
+          {/* Nav Categories */}
+          <div className="flex flex-col space-y-1 overflow-y-auto max-h-[calc(80vh-220px)] scrollbar-none py-1">
+            {navGroups.map((group, groupIdx) => (
               <div key={group.category} className="space-y-1">
-                {/* Category Header (when expanded) or subtle separator (when collapsed) */}
-                {isExpanded ? (
-                  <div className="px-3 pt-1 pb-0.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block">
+                {/* Category Header or Divider */}
+                {groupIdx > 0 && (
+                  <div className="py-0.5">
+                    <div
+                      className={`h-px rounded-full mx-auto transition-all duration-300 ${
+                        isDark ? 'bg-white/10' : 'bg-slate-200/80'
+                      } ${isExpanded ? 'w-full' : 'w-6'}`}
+                    />
+                  </div>
+                )}
+
+                {isExpanded && (
+                  <div className="px-2 pt-1 pb-0.5">
+                    <span
+                      className={`text-[9px] font-bold uppercase tracking-wider block ${
+                        isDark ? 'text-indigo-300/60' : 'text-slate-400'
+                      }`}
+                    >
                       {group.category}
                     </span>
                   </div>
-                ) : (
-                  groupIdx > 0 && <div className="w-8 h-px bg-zinc-800/40 my-2 mx-auto" />
                 )}
 
-                {/* Items inside category */}
+                {/* Items */}
                 {group.items.map((item) => {
                   const Icon = item.icon;
-                  const isActive = workspaceMode === 'studio' && activeTab === item.id;
+                  const isActive =
+                    item.id === 'template_architect'
+                      ? workspaceMode === 'admin'
+                      : workspaceMode === 'studio' && activeTab === item.id;
 
                   return (
-                    <div key={item.id} className="relative group">
+                    <div key={item.id} className="relative group/btn w-full">
                       <button
                         onClick={() => handleNavClick(item.id)}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl transition-all duration-200 text-left cursor-pointer ${
+                        className={`w-full flex items-center transition-all duration-300 cursor-pointer ${
+                          isExpanded
+                            ? 'gap-3 px-2.5 py-2 rounded-2xl text-left'
+                            : 'justify-center p-2 rounded-full'
+                        } ${
                           isActive
-                            ? isDark
-                              ? 'bg-zinc-900 text-white shadow-soft font-semibold'
-                              : 'bg-zinc-100 text-zinc-950 shadow-soft font-semibold'
+                            ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white shadow-soft-sm'
                             : isDark
-                            ? 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900/60'
-                            : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                              ? 'text-indigo-300/80 hover:text-white hover:bg-white/5'
+                              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
                         }`}
+                        aria-label={item.label}
                       >
-                        <Icon className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" />
+                        {/* Primary Website Brand Color Icon */}
+                        <div
+                          className={`flex items-center justify-center shrink-0 transition-transform group-hover/btn:scale-110 w-5 h-5 ${
+                            isActive
+                              ? 'text-white drop-shadow'
+                              : isDark
+                                ? 'text-indigo-400 group-hover/btn:text-indigo-200'
+                                : 'text-indigo-600 group-hover/btn:text-indigo-700'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                        </div>
 
+                        {/* Title, Subtitle & Badge when expanded */}
                         {isExpanded && (
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-semibold truncate">{item.label}</span>
-                              {item.badge && (
-                                <span className={`text-[11px] tabular-nums font-bold px-1.5 py-0.5 rounded-md ${
-                                  isDark ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-200 text-zinc-700'
-                                }`}>
-                                  {item.badge}
-                                </span>
-                              )}
+                          <div className="flex-1 min-w-0 flex items-center justify-between">
+                            <div className="truncate pr-1">
+                              <span
+                                className={`text-xs font-semibold block truncate leading-tight ${
+                                  isActive
+                                    ? 'text-white'
+                                    : isDark
+                                      ? 'text-zinc-200'
+                                      : 'text-slate-800'
+                                }`}
+                              >
+                                {item.label}
+                              </span>
+                              <span
+                                className={`text-[10px] block truncate ${
+                                  isActive
+                                    ? 'text-indigo-100/90'
+                                    : isDark
+                                      ? 'text-indigo-300/60'
+                                      : 'text-slate-400'
+                                }`}
+                              >
+                                {item.subtitle}
+                              </span>
                             </div>
+                            {item.badge && (
+                              <span
+                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 shadow-soft-xs ${
+                                  isActive
+                                    ? 'bg-white/25 text-white'
+                                    : isDark
+                                      ? 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
                           </div>
                         )}
                       </button>
 
-                      {/* Tooltip for rail mode on desktop */}
+                      {/* Tooltip on collapsed state */}
                       {!isExpanded && (
-                        <div className={`hidden md:block absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 text-xs font-medium rounded-xl shadow-soft-lg whitespace-nowrap opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity z-50 ${
-                          isDark ? 'bg-zinc-900 text-white' : 'bg-zinc-900 text-white'
-                        }`}>
-                          {item.label}
+                        <div
+                          className={`absolute left-14 top-1/2 -translate-y-1/2 px-3 py-1.5 backdrop-blur-md text-xs rounded-xl opacity-0 pointer-events-none group-hover/btn:opacity-100 transition-opacity whitespace-nowrap shadow-2xl z-50 flex items-center gap-2 ${
+                            isDark
+                              ? 'bg-zinc-950/95 border border-white/10 text-white'
+                              : 'bg-white/95 border border-slate-200 text-slate-800 shadow-xl'
+                          }`}
+                        >
+                          <span className="font-medium">{item.label}</span>
+                          {item.badge && (
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                                isDark
+                                  ? 'bg-indigo-500/30 text-indigo-300'
+                                  : 'bg-indigo-100 text-indigo-700'
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
                         </div>
                       )}
                     </div>
@@ -353,199 +411,313 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 })}
               </div>
             ))}
-
-            {/* Quick Recent History Strip (when expanded) */}
-            {isExpanded && savedDecks.length > 1 && onSelectDeck && (
-              <div className="pt-3 space-y-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 px-2 block">
-                  Recent Executions
-                </span>
-                <div className="space-y-1 max-h-36 overflow-y-auto scrollbar-none">
-                  {savedDecks.slice(0, 4).map((d, i) => {
-                    const isCurrent = currentDeck?.title === d.title;
-                    return (
-                      <button
-                        key={d.id || i}
-                        onClick={() => {
-                          if (workspaceMode === 'admin' && onToggleWorkspaceMode) {
-                            onToggleWorkspaceMode('studio');
-                          }
-                          onSelectDeck(d);
-                          setActiveTab('generator');
-                          if (onCloseMobile) onCloseMobile();
-                        }}
-                        className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs truncate transition-all cursor-pointer flex items-center justify-between ${
-                          isCurrent
-                            ? isDark ? 'bg-indigo-950/40 text-indigo-400 font-bold shadow-soft-xs' : 'bg-indigo-50 text-indigo-700 font-bold shadow-soft-xs'
-                            : isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900/60' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
-                        }`}
-                        title={d.title}
-                      >
-                        <span className="truncate">{d.title}</span>
-                        <span className="text-[10px] font-mono text-zinc-500 shrink-0 ml-1">
-                          {d.slides?.length}s
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* In-App PWA Installation Tile */}
-            {isExpanded && (
-              <div className="pt-2">
-                <PWAInstallButton variant="sidebar" isDark={isDark} />
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Bottom: Teacher / Admin Account & Preferences */}
-        <div className="p-3 space-y-2">
-          {/* User Account Tile */}
-          {currentUser ? (
-            <div className="flex items-center justify-between">
-              <div
-                onClick={isAdmin && onOpenWorkspaceSelector ? onOpenWorkspaceSelector : undefined}
-                className={`flex items-center gap-2 overflow-hidden ${isAdmin ? 'cursor-pointer group' : ''}`}
-                title={isAdmin ? 'Click to open workspace selector' : ''}
+        {/* Bottom Section: Admin, User / Auth, Theme Toggle */}
+        <div className="flex flex-col w-full space-y-1 pt-1 overflow-hidden">
+          {/* Subtle separator */}
+          <div className="py-0.5">
+            <div
+              className={`h-px rounded-full mx-auto transition-all duration-300 ${
+                isDark ? 'bg-white/10' : 'bg-slate-200/80'
+              } ${isExpanded ? 'w-full' : 'w-6'}`}
+            />
+          </div>
+
+          {/* Admin Switcher Tile (if user is admin) */}
+          {isAdmin && (
+            <div className="w-full relative group/btn">
+              <button
+                onClick={() => {
+                  if (onToggleWorkspaceMode) {
+                    onToggleWorkspaceMode(workspaceMode === 'admin' ? 'studio' : 'admin');
+                  }
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className={`w-full flex items-center transition-all duration-300 cursor-pointer ${
+                  isExpanded
+                    ? 'gap-3 px-2.5 py-2 rounded-2xl text-left'
+                    : 'justify-center p-2 rounded-full'
+                } ${
+                  workspaceMode === 'admin'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.4)]'
+                    : isDark
+                      ? 'text-purple-300/80 hover:text-white hover:bg-white/5'
+                      : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
+                }`}
+                aria-label="Admin Center"
               >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-soft-xs text-white ${
-                  isAdmin ? 'bg-gradient-to-tr from-purple-600 to-indigo-600 ring-2 ring-purple-400/50' : 'bg-gradient-to-tr from-indigo-500 to-purple-500'
-                }`}>
-                  {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : currentUser.email?.[0].toUpperCase() || 'T'}
-                </div>
-
-                {isExpanded && (
-                  <div className="overflow-hidden">
-                    <div className="text-xs font-bold truncate flex items-center gap-1">
-                      <span>{currentUser.displayName || currentUser.email?.split('@')[0]}</span>
-                      {isAdmin && (
-                        <span className="px-1 py-0.2 rounded text-[8px] font-extrabold uppercase bg-purple-500/20 text-purple-400">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                      <Cloud className="w-3 h-3" />
-                      {isAdmin ? 'Admin Scope Active' : 'Cloud Synced'}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {isExpanded && (
-                <button
-                  onClick={onSignOut}
-                  title="Sign out of account"
-                  className={`p-1.5 rounded-lg text-zinc-400 hover:text-red-400 cursor-pointer transition-colors ${
-                    isDark ? 'hover:bg-zinc-900' : 'hover:bg-zinc-100'
+                <div
+                  className={`flex items-center justify-center shrink-0 ${
+                    workspaceMode === 'admin'
+                      ? 'text-white'
+                      : isDark
+                        ? 'text-purple-400'
+                        : 'text-purple-600'
                   }`}
                 >
-                  <LogOut className="w-4 h-4" />
+                  <Activity className="w-5 h-5" />
+                </div>
+                {isExpanded && (
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`text-xs font-semibold block truncate ${
+                        isDark ? 'text-white' : 'text-slate-900'
+                      }`}
+                    >
+                      {workspaceMode === 'admin' ? 'Admin Active' : 'Admin Center'}
+                    </span>
+                    <span
+                      className={`text-[10px] block truncate ${
+                        isDark ? 'text-purple-300/70' : 'text-purple-600/70'
+                      }`}
+                    >
+                      Telemetry & DB
+                    </span>
+                  </div>
+                )}
+              </button>
+
+              {!isExpanded && (
+                <div
+                  className={`absolute left-14 top-1/2 -translate-y-1/2 px-3 py-1.5 backdrop-blur-md text-xs rounded-xl opacity-0 pointer-events-none group-hover/btn:opacity-100 transition-opacity whitespace-nowrap shadow-2xl z-50 ${
+                    isDark
+                      ? 'bg-zinc-950/95 border border-purple-500/30 text-white'
+                      : 'bg-white/95 border border-purple-200 text-purple-900 shadow-xl'
+                  }`}
+                >
+                  {workspaceMode === 'admin' ? 'Admin Active' : 'Switch to Admin'}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* User Account / Auth Button */}
+          {currentUser ? (
+            <div className="w-full relative group/user">
+              {isExpanded ? (
+                <div
+                  className={`flex items-center justify-between p-2 rounded-2xl border ${
+                    isDark
+                      ? 'bg-zinc-900/60 border-white/10'
+                      : 'bg-slate-100/80 border-slate-200/80'
+                  }`}
+                >
+                  <div
+                    onClick={isAdmin && onOpenWorkspaceSelector ? onOpenWorkspaceSelector : undefined}
+                    className={`flex items-center gap-2.5 overflow-hidden flex-1 ${
+                      isAdmin ? 'cursor-pointer' : ''
+                    }`}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.4)]">
+                      {currentUser.displayName
+                        ? currentUser.displayName[0].toUpperCase()
+                        : currentUser.email?.[0].toUpperCase() || 'U'}
+                    </div>
+                    <div className="overflow-hidden min-w-0">
+                      <span
+                        className={`text-xs font-semibold truncate block ${
+                          isDark ? 'text-white' : 'text-slate-900'
+                        }`}
+                      >
+                        {currentUser.displayName || currentUser.email?.split('@')[0]}
+                      </span>
+                      <span
+                        className={`text-[10px] truncate block ${
+                          isDark ? 'text-indigo-300/70' : 'text-slate-500'
+                        }`}
+                      >
+                        {isAdmin ? 'Admin Scope' : 'Cloud Synced'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={onSignOut}
+                    title="Sign Out"
+                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                      isDark
+                        ? 'text-white/50 hover:text-red-400 hover:bg-white/10'
+                        : 'text-slate-400 hover:text-red-600 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={isAdmin && onOpenWorkspaceSelector ? onOpenWorkspaceSelector : onSignOut}
+                  className="w-9 h-9 rounded-full mx-auto flex items-center justify-center font-bold text-xs text-white bg-gradient-to-tr from-indigo-600 to-violet-600 shadow-[0_0_15px_rgba(99,102,241,0.4)] cursor-pointer hover:scale-105 transition-transform"
+                >
+                  {currentUser.displayName
+                    ? currentUser.displayName[0].toUpperCase()
+                    : currentUser.email?.[0].toUpperCase() || 'U'}
                 </button>
+              )}
+
+              {!isExpanded && (
+                <div
+                  className={`absolute left-14 top-1/2 -translate-y-1/2 px-3 py-1.5 backdrop-blur-md text-xs rounded-xl opacity-0 pointer-events-none group-hover/user:opacity-100 transition-opacity whitespace-nowrap shadow-2xl z-50 flex items-center gap-3 ${
+                    isDark
+                      ? 'bg-zinc-950/95 border border-white/10 text-white'
+                      : 'bg-white/95 border border-slate-200 text-slate-800 shadow-xl'
+                  }`}
+                >
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-xs">
+                      {currentUser.displayName || currentUser.email?.split('@')[0]}
+                    </span>
+                    <span className={`text-[10px] ${isDark ? 'text-indigo-300/70' : 'text-slate-500'}`}>
+                      {isAdmin ? 'Admin' : 'Signed In'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSignOut();
+                    }}
+                    className={`pointer-events-auto p-1 rounded-md text-red-500 ${
+                      isDark ? 'hover:bg-white/10' : 'hover:bg-slate-100'
+                    }`}
+                    title="Sign out"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               )}
             </div>
           ) : (
-            <button
-              onClick={() => {
-                onOpenAuth();
-                if (onCloseMobile) onCloseMobile();
-              }}
-              title="Sign in to your account"
-              className={`w-full flex items-center justify-center gap-2 p-2.5 rounded-xl text-xs font-bold shadow-soft-xs transition-all cursor-pointer ${
-                isDark
-                  ? 'bg-zinc-900 hover:bg-zinc-850 text-white'
-                  : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-900'
-              }`}
-            >
-              <LogIn className="w-4 h-4 text-indigo-400 shrink-0" />
-              {isExpanded && <span>Sign In</span>}
-            </button>
+            <div className="w-full relative group/btn">
+              <button
+                onClick={() => {
+                  onOpenAuth();
+                  if (onCloseMobile) onCloseMobile();
+                }}
+                className={`w-full flex items-center transition-all duration-300 cursor-pointer ${
+                  isExpanded
+                    ? 'gap-3 px-2.5 py-2 rounded-2xl text-left'
+                    : 'justify-center p-2 rounded-full'
+                } ${
+                  isDark
+                    ? 'text-indigo-300/80 hover:text-white hover:bg-white/5'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80'
+                }`}
+                aria-label="Sign In"
+              >
+                <LogIn
+                  className={`w-5 h-5 ${
+                    isDark
+                      ? 'text-indigo-400 group-hover/btn:text-indigo-200'
+                      : 'text-indigo-600 group-hover/btn:text-indigo-700'
+                  }`}
+                />
+                {isExpanded && (
+                  <span className={`text-xs font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    Sign In
+                  </span>
+                )}
+              </button>
+
+              {!isExpanded && (
+                <div
+                  className={`absolute left-14 top-1/2 -translate-y-1/2 px-3 py-1.5 backdrop-blur-md text-xs rounded-xl opacity-0 pointer-events-none group-hover/btn:opacity-100 transition-opacity whitespace-nowrap shadow-2xl z-50 ${
+                    isDark
+                      ? 'bg-zinc-950/95 border border-white/10 text-white'
+                      : 'bg-white/95 border border-slate-200 text-slate-800 shadow-xl'
+                  }`}
+                >
+                  Sign In
+                </div>
+              )}
+            </div>
           )}
 
-          {/* Theme Selector: Light / System / Dark */}
-          <div className="pt-1">
+          {/* Theme Mode Toggle */}
+          <div className="w-full relative group/theme">
             {isExpanded ? (
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between px-1">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
-                    Appearance
-                  </span>
-                  <span className="text-[10px] font-semibold text-indigo-400 capitalize">
-                    {themeMode}
-                  </span>
-                </div>
-                <div className={`grid grid-cols-3 gap-1 p-1 rounded-2xl shadow-soft-xs ${
-                  isDark ? 'bg-zinc-900/90' : 'bg-zinc-100'
-                }`}>
-                  <button
-                    onClick={() => setThemeMode ? setThemeMode('light') : toggleTheme?.()}
-                    className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      themeMode === 'light'
-                        ? 'bg-white text-zinc-900 shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="Light Mode"
-                  >
-                    <Sun className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-[11px]">Light</span>
-                  </button>
-
-                  <button
-                    onClick={() => setThemeMode ? setThemeMode('system') : toggleTheme?.()}
-                    className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      themeMode === 'system'
-                        ? isDark ? 'bg-zinc-800 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="System Default Mode"
-                  >
-                    <Monitor className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-[11px]">Auto</span>
-                  </button>
-
-                  <button
-                    onClick={() => setThemeMode ? setThemeMode('dark') : toggleTheme?.()}
-                    className={`flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      themeMode === 'dark'
-                        ? isDark ? 'bg-zinc-800 text-white shadow-soft-xs' : 'bg-zinc-900 text-white shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="Dark Mode"
-                  >
-                    <Moon className="w-3.5 h-3.5 shrink-0" />
-                    <span className="text-[11px]">Dark</span>
-                  </button>
-                </div>
+              <div
+                className={`flex items-center justify-between p-1 rounded-2xl border ${
+                  isDark
+                    ? 'bg-zinc-900/80 border-white/10'
+                    : 'bg-slate-100/90 border-slate-200/80'
+                }`}
+              >
+                <button
+                  onClick={() => (setThemeMode ? setThemeMode('light') : toggleTheme?.())}
+                  className={`flex-1 py-1 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                    themeMode === 'light'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : isDark
+                        ? 'text-zinc-400 hover:text-white'
+                        : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Light mode"
+                >
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Light</span>
+                </button>
+                <button
+                  onClick={() => (setThemeMode ? setThemeMode('system') : toggleTheme?.())}
+                  className={`flex-1 py-1 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                    themeMode === 'system'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isDark
+                        ? 'text-zinc-400 hover:text-white'
+                        : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="System auto"
+                >
+                  <Monitor className="w-3.5 h-3.5 text-indigo-200" />
+                  <span>Auto</span>
+                </button>
+                <button
+                  onClick={() => (setThemeMode ? setThemeMode('dark') : toggleTheme?.())}
+                  className={`flex-1 py-1 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all ${
+                    themeMode === 'dark'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : isDark
+                        ? 'text-zinc-400 hover:text-white'
+                        : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Dark mode"
+                >
+                  <Moon className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Dark</span>
+                </button>
               </div>
             ) : (
               <button
-                onClick={() => {
-                  if (setThemeMode) {
-                    const nextMode: ThemeMode = themeMode === 'light' ? 'dark' : themeMode === 'dark' ? 'system' : 'light';
-                    setThemeMode(nextMode);
-                  } else {
-                    toggleTheme?.();
-                  }
-                }}
-                className={`w-full p-2 rounded-xl text-xs transition-colors cursor-pointer flex items-center justify-center ${
-                  isDark ? 'text-zinc-400 hover:text-white hover:bg-zinc-900' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
+                onClick={cycleTheme}
+                className={`w-full flex items-center justify-center p-2 rounded-full transition-all cursor-pointer ${
+                  isDark
+                    ? 'text-zinc-400 hover:text-white hover:bg-white/10'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
-                title={`Theme: ${themeMode.toUpperCase()} (Click to toggle)`}
+                aria-label="Toggle Theme"
               >
                 {themeMode === 'light' ? (
-                  <Sun className="w-4 h-4 text-amber-500" />
+                  <Sun className="w-5 h-5 text-amber-500" />
                 ) : themeMode === 'dark' ? (
-                  <Moon className="w-4 h-4 text-indigo-400" />
+                  <Moon className="w-5 h-5 text-indigo-400" />
                 ) : (
-                  <Monitor className="w-4 h-4 text-purple-400" />
+                  <Monitor className="w-5 h-5 text-indigo-500 dark:text-indigo-300" />
                 )}
               </button>
             )}
-          </div>
 
+            {!isExpanded && (
+              <div
+                className={`absolute left-14 top-1/2 -translate-y-1/2 px-3 py-1.5 backdrop-blur-md text-xs rounded-xl opacity-0 pointer-events-none group-hover/theme:opacity-100 transition-opacity whitespace-nowrap shadow-2xl z-50 capitalize ${
+                  isDark
+                    ? 'bg-zinc-950/95 border border-white/10 text-white'
+                    : 'bg-white/95 border border-slate-200 text-slate-800 shadow-xl'
+                }`}
+              >
+                Theme: {themeMode}
+              </div>
+            )}
+          </div>
         </div>
       </aside>
     </>

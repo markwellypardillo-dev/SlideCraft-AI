@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Wand2,
   Type,
@@ -17,11 +17,12 @@ import {
   BookOpen,
   Cloud,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Split,
   TrendingUp,
   GitCommit,
   Quote,
-  Sparkles,
   Sliders,
   Maximize2,
 } from 'lucide-react';
@@ -70,6 +71,126 @@ export const FloatingCanvasDock: React.FC<FloatingCanvasDockProps> = ({
   isSavingToCloud = false,
 }) => {
   const [openDropdown, setOpenDropdown] = useState<'magic' | 'typography' | 'layout' | 'tools' | null>(null);
+
+  // Horizontal Scroll & Drag-to-Pan State
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const isMouseDownRef = useRef(false);
+  const startXRef = useRef(0);
+  const scrollLeftRef = useRef(0);
+  const hasMovedRef = useRef(false);
+
+  // Check scroll boundary state
+  const checkScrollState = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    // Allow 4px margin of error for subpixel scaling
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    checkScrollState();
+    const timeout = setTimeout(checkScrollState, 250);
+
+    const onScroll = () => checkScrollState();
+    el.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', checkScrollState);
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      resizeObserver = new ResizeObserver(() => checkScrollState());
+      resizeObserver.observe(el);
+    }
+
+    return () => {
+      clearTimeout(timeout);
+      el.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', checkScrollState);
+      if (resizeObserver) resizeObserver.disconnect();
+    };
+  }, [checkScrollState]);
+
+  // Convert mouse wheel vertically into horizontal pan when over dock
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        const { scrollLeft, scrollWidth, clientWidth } = el;
+        const canLeft = scrollLeft > 4;
+        const canRight = scrollLeft + clientWidth < scrollWidth - 4;
+        if ((e.deltaY > 0 && canRight) || (e.deltaY < 0 && canLeft)) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+          checkScrollState();
+        }
+      }
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+    };
+  }, [checkScrollState]);
+
+  // Mouse Drag to Pan
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    isMouseDownRef.current = true;
+    startXRef.current = e.pageX - el.offsetLeft;
+    scrollLeftRef.current = el.scrollLeft;
+    hasMovedRef.current = false;
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isMouseDownRef.current) return;
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - startXRef.current) * 1.4;
+    if (Math.abs(walk) > 4) {
+      hasMovedRef.current = true;
+      setIsDragging(true);
+      el.scrollLeft = scrollLeftRef.current - walk;
+      checkScrollState();
+    }
+  };
+
+  const handleMouseUp = () => {
+    isMouseDownRef.current = false;
+    if (isDragging) {
+      setTimeout(() => {
+        setIsDragging(false);
+        hasMovedRef.current = false;
+      }, 60);
+    }
+  };
+
+  const handleClickCapture = (e: React.MouseEvent) => {
+    if (hasMovedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      hasMovedRef.current = false;
+    }
+  };
+
+  const handleScrollBy = (amount: number) => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollBy({ left: amount, behavior: 'smooth' });
+    setTimeout(checkScrollState, 300);
+  };
 
   const toggleDropdown = (key: 'magic' | 'typography' | 'layout' | 'tools') => {
     setOpenDropdown(openDropdown === key ? null : key);
@@ -346,188 +467,249 @@ export const FloatingCanvasDock: React.FC<FloatingCanvasDockProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* FIGMA-STYLE CONSOLIDATED FLOATING CANVAS DOCK */}
+      {/* FIGMA-STYLE CONSOLIDATED FLOATING CANVAS DOCK WITH PAN & OVERFLOW AFFORDANCES */}
       {/* ========================================================================= */}
-      <div
-        className={`px-3 py-2 rounded-2xl sm:rounded-full shadow-soft-2xl flex items-center gap-1.5 sm:gap-2 backdrop-blur-xl border transition-all max-w-[calc(100vw-1.5rem)] overflow-x-auto scrollbar-none shrink-0 ${
-          isDark
-            ? 'bg-zinc-900/90 border-zinc-800/80 text-white'
-            : 'bg-white/90 border-zinc-200/80 text-zinc-900'
-        }`}
-      >
-        {/* SEGMENT 1: VIEW MODE SWITCHER (Figma Tool Switcher) */}
-        <div className={`p-0.5 rounded-xl sm:rounded-full flex items-center shrink-0 ${
-          isDark ? 'bg-zinc-950/80' : 'bg-zinc-100'
-        }`}>
+      <div className="relative max-w-full flex items-center justify-center">
+        {/* Left Scroll Gradient Fade & Action Button */}
+        {canScrollLeft && (
+          <>
+            <div
+              className={`pointer-events-none absolute left-0 top-0 bottom-0 w-12 sm:w-16 rounded-l-2xl sm:rounded-l-full z-20 transition-opacity duration-300 ${
+                isDark
+                  ? 'bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent'
+                  : 'bg-gradient-to-r from-white via-white/80 to-transparent'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => handleScrollBy(-220)}
+              aria-label="Scroll left to view previous controls"
+              className={`absolute left-1 sm:left-1.5 top-1/2 -translate-y-1/2 z-30 p-1.5 sm:p-2 rounded-full shadow-lg border backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center justify-center ${
+                isDark
+                  ? 'bg-zinc-900/95 hover:bg-indigo-600 text-zinc-200 hover:text-white border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.6)]'
+                  : 'bg-white/95 hover:bg-indigo-600 text-zinc-700 hover:text-white border-zinc-200 shadow-md'
+              }`}
+              title="Scroll left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+          </>
+        )}
+
+        {/* Scrollable & Draggable Dock Container */}
+        <div
+          ref={scrollContainerRef}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onClickCapture={handleClickCapture}
+          className={`px-3.5 py-2.5 rounded-2xl sm:rounded-full shadow-2xl flex items-center gap-1.5 sm:gap-2.5 backdrop-blur-2xl border transition-all duration-300 max-w-[calc(100vw-1.5rem)] overflow-x-auto scrollbar-none shrink-0 touch-pan-x select-none ${
+            isDragging ? 'cursor-grabbing' : 'cursor-grab'
+          } ${
+            isDark
+              ? 'bg-zinc-950/85 border-white/10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.6)]'
+              : 'bg-white/90 border-zinc-200/90 text-zinc-900 shadow-[0_15px_35px_rgba(0,0,0,0.08)]'
+          }`}
+          style={{ scrollBehavior: 'smooth' }}
+        >
+          {/* SEGMENT 1: VIEW MODE SWITCHER (Figma Tool Switcher) */}
+          <div className={`p-0.5 rounded-xl sm:rounded-full flex items-center shrink-0 ${
+            isDark ? 'bg-zinc-950/80' : 'bg-zinc-100'
+          }`}>
+            <button
+              onClick={() => onViewModeChange('canvas')}
+              className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'canvas'
+                  ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
+                  : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+              title="Interactive Visual Canvas"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Canvas</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange('outline')}
+              className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'outline'
+                  ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
+                  : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+              title="Markdown Curriculum Outline"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Outline</span>
+            </button>
+            <button
+              onClick={() => onViewModeChange('grid')}
+              className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                viewMode === 'grid'
+                  ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
+                  : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+              title="All Slides Grid Overview"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Grid</span>
+            </button>
+          </div>
+
+          <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
+
+          {/* SEGMENT 2: SLIDE FORMATTING CONTROLS */}
+          {/* Magic Wand */}
           <button
-            onClick={() => onViewModeChange('canvas')}
-            className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              viewMode === 'canvas'
-                ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
-                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+            onClick={() => toggleDropdown('magic')}
+            disabled={isApplyingMagic}
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              openDropdown === 'magic'
+                ? 'bg-indigo-600 text-white shadow-soft-xs'
+                : isDark
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
             }`}
-            title="Interactive Visual Canvas"
+            title="Transform slide with Gemini AI"
           >
-            <Eye className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Canvas</span>
+            <Wand2 className={`w-3.5 h-3.5 text-indigo-400 ${isApplyingMagic ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isApplyingMagic ? 'Refining...' : 'AI Magic'}</span>
+            <ChevronDown className="w-3 h-3 opacity-60" />
           </button>
+
+          {/* Typography */}
           <button
-            onClick={() => onViewModeChange('outline')}
-            className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              viewMode === 'outline'
-                ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
-                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+            onClick={() => toggleDropdown('typography')}
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              openDropdown === 'typography'
+                ? 'bg-indigo-600 text-white shadow-soft-xs'
+                : isDark
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
             }`}
-            title="Markdown Curriculum Outline"
+            title="Select curated typography pairing"
           >
-            <FileText className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Outline</span>
+            <Type className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden sm:inline capitalize">{typography}</span>
+            <ChevronDown className="w-3 h-3 opacity-60" />
           </button>
+
+          {/* Layout */}
           <button
-            onClick={() => onViewModeChange('grid')}
-            className={`px-2.5 py-1.5 rounded-lg sm:rounded-full text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-              viewMode === 'grid'
-                ? isDark ? 'bg-indigo-600 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
-                : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
+            onClick={() => toggleDropdown('layout')}
+            className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              openDropdown === 'layout'
+                ? 'bg-indigo-600 text-white shadow-soft-xs'
+                : isDark
+                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
             }`}
-            title="All Slides Grid Overview"
+            title="Change slide layout archetype"
           >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            <span className="hidden md:inline">Grid</span>
+            <Layout className="w-3.5 h-3.5 text-indigo-400" />
+            <span className="hidden md:inline">{currentSlide.layoutType}</span>
+            <span className="md:hidden">Layout</span>
+            <ChevronDown className="w-3 h-3 opacity-60" />
+          </button>
+
+          <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
+
+          {/* SEGMENT 3: INSPECTOR PANELS */}
+          <button
+            onClick={() => onToggleInspectorPanel('visual')}
+            className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
+              activeInspectorPanel === 'visual'
+                ? 'bg-indigo-500/20 text-indigo-400 font-bold ring-1 ring-indigo-500/40'
+                : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
+            }`}
+            title="Visual Blueprint & Art Studio"
+          >
+            <Palette className="w-3.5 h-3.5" />
+          </button>
+
+          <button
+            onClick={() => onToggleInspectorPanel('notes')}
+            className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
+              activeInspectorPanel === 'notes'
+                ? 'bg-indigo-500/20 text-indigo-400 font-bold ring-1 ring-indigo-500/40'
+                : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
+            }`}
+            title="Teacher Script & Talking Points"
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+          </button>
+
+          {currentSlide.assessment && (
+            <button
+              onClick={() => onToggleInspectorPanel('assessment')}
+              className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
+                activeInspectorPanel === 'assessment'
+                  ? 'bg-emerald-500/20 text-emerald-400 font-bold ring-1 ring-emerald-500/40'
+                  : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
+              }`}
+              title="Formative Check-for-Understanding"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
+
+          {/* SEGMENT 4: MORE TOOLS DROPDOWN */}
+          <button
+            onClick={() => toggleDropdown('tools')}
+            className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
+              openDropdown === 'tools'
+                ? 'bg-indigo-600 text-white shadow-soft-xs'
+                : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
+            }`}
+            title="Workspace Tools & Export"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Copy Slide Markdown */}
+          <button
+            onClick={onCopySlide}
+            className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
+              isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600'
+            }`}
+            title="Copy slide markdown"
+          >
+            {isCopiedSlide ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+          </button>
+
+          {/* SEGMENT 5: PRIMARY PRESENT ACTION */}
+          <button
+            onClick={onOpenPresenter}
+            className="px-3.5 sm:px-4 py-1.5 rounded-xl sm:rounded-full font-bold text-xs flex items-center gap-1.5 bg-gradient-to-r from-orange-500 via-orange-600 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-glow-accent cursor-pointer shrink-0 mr-1"
+          >
+            <Play className="w-3 h-3 fill-current" />
+            <span>Present</span>
           </button>
         </div>
 
-        <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
-
-        {/* SEGMENT 2: SLIDE FORMATTING CONTROLS */}
-        {/* Magic Wand */}
-        <button
-          onClick={() => toggleDropdown('magic')}
-          disabled={isApplyingMagic}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-            openDropdown === 'magic'
-              ? 'bg-indigo-600 text-white shadow-soft-xs'
-              : isDark
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
-          }`}
-          title="Transform slide with Gemini AI"
-        >
-          <Wand2 className={`w-3.5 h-3.5 text-indigo-400 ${isApplyingMagic ? 'animate-spin' : ''}`} />
-          <span className="hidden sm:inline">{isApplyingMagic ? 'Refining...' : 'AI Magic'}</span>
-          <ChevronDown className="w-3 h-3 opacity-60" />
-        </button>
-
-        {/* Typography */}
-        <button
-          onClick={() => toggleDropdown('typography')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-            openDropdown === 'typography'
-              ? 'bg-indigo-600 text-white shadow-soft-xs'
-              : isDark
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
-          }`}
-          title="Select curated typography pairing"
-        >
-          <Type className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="hidden sm:inline capitalize">{typography}</span>
-          <ChevronDown className="w-3 h-3 opacity-60" />
-        </button>
-
-        {/* Layout */}
-        <button
-          onClick={() => toggleDropdown('layout')}
-          className={`px-2.5 sm:px-3 py-1.5 rounded-xl sm:rounded-full text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
-            openDropdown === 'layout'
-              ? 'bg-indigo-600 text-white shadow-soft-xs'
-              : isDark
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-              : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-800'
-          }`}
-          title="Change slide layout archetype"
-        >
-          <Layout className="w-3.5 h-3.5 text-indigo-400" />
-          <span className="hidden md:inline">{currentSlide.layoutType}</span>
-          <span className="md:hidden">Layout</span>
-          <ChevronDown className="w-3 h-3 opacity-60" />
-        </button>
-
-        <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
-
-        {/* SEGMENT 3: INSPECTOR PANELS */}
-        <button
-          onClick={() => onToggleInspectorPanel('visual')}
-          className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-            activeInspectorPanel === 'visual'
-              ? 'bg-indigo-500/20 text-indigo-400 font-bold ring-1 ring-indigo-500/40'
-              : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
-          }`}
-          title="Visual Blueprint & Art Studio"
-        >
-          <Palette className="w-3.5 h-3.5" />
-        </button>
-
-        <button
-          onClick={() => onToggleInspectorPanel('notes')}
-          className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-            activeInspectorPanel === 'notes'
-              ? 'bg-indigo-500/20 text-indigo-400 font-bold ring-1 ring-indigo-500/40'
-              : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
-          }`}
-          title="Teacher Script & Talking Points"
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-        </button>
-
-        {currentSlide.assessment && (
-          <button
-            onClick={() => onToggleInspectorPanel('assessment')}
-            className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-              activeInspectorPanel === 'assessment'
-                ? 'bg-emerald-500/20 text-emerald-400 font-bold ring-1 ring-emerald-500/40'
-                : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
-            }`}
-            title="Formative Check-for-Understanding"
-          >
-            <HelpCircle className="w-3.5 h-3.5" />
-          </button>
+        {/* Right Scroll Gradient Fade & Floating "More ▶" Action Button */}
+        {canScrollRight && (
+          <>
+            <div
+              className={`pointer-events-none absolute right-0 top-0 bottom-0 w-16 sm:w-24 rounded-r-2xl sm:rounded-r-full z-20 transition-opacity duration-300 ${
+                isDark
+                  ? 'bg-gradient-to-l from-zinc-950 via-zinc-950/80 to-transparent'
+                  : 'bg-gradient-to-l from-white via-white/80 to-transparent'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => handleScrollBy(220)}
+              aria-label="Scroll right to view more controls and Present"
+              className="absolute -right-2 sm:-right-3 top-1/2 -translate-y-1/2 z-30 px-2.5 py-1.5 rounded-full shadow-soft-md border backdrop-blur-md transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer flex items-center gap-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white border-white/20 group/btn"
+              title="More controls (Present & actions) — click or drag to reveal"
+            >
+              <span className="text-[10px] font-bold tracking-tight pl-0.5">More</span>
+              <ChevronRight className="w-3.5 h-3.5 animate-pulse group-hover/btn:translate-x-0.5 transition-transform" />
+            </button>
+          </>
         )}
-
-        <div className="w-[1px] h-5 bg-zinc-700/30 mx-0.5 shrink-0" />
-
-        {/* SEGMENT 4: MORE TOOLS DROPDOWN */}
-        <button
-          onClick={() => toggleDropdown('tools')}
-          className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-            openDropdown === 'tools'
-              ? 'bg-indigo-600 text-white shadow-soft-xs'
-              : isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200' : 'hover:bg-zinc-100 text-zinc-600'
-          }`}
-          title="Workspace Tools & Export"
-        >
-          <Sliders className="w-3.5 h-3.5" />
-        </button>
-
-        {/* Copy Slide Markdown */}
-        <button
-          onClick={onCopySlide}
-          className={`p-2 rounded-xl sm:rounded-full text-xs transition-all cursor-pointer shrink-0 ${
-            isDark ? 'hover:bg-zinc-800 text-zinc-400 hover:text-white' : 'hover:bg-zinc-100 text-zinc-600'
-          }`}
-          title="Copy slide markdown"
-        >
-          {isCopiedSlide ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-        </button>
-
-        {/* SEGMENT 5: PRIMARY PRESENT ACTION */}
-        <button
-          onClick={onOpenPresenter}
-          className="px-3 sm:px-3.5 py-1.5 rounded-xl sm:rounded-full font-bold text-xs flex items-center gap-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:opacity-95 shadow-soft cursor-pointer transition-all shrink-0"
-        >
-          <Play className="w-3 h-3 fill-current" />
-          <span>Present</span>
-        </button>
       </div>
     </div>
   );

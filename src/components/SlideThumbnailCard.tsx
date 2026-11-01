@@ -224,26 +224,26 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
   return (
     <div
       onClick={onSelect}
-      className={`group relative rounded-2xl p-2.5 transition-all duration-200 cursor-pointer text-left ${
+      className={`group relative rounded-2xl p-4 transition-all duration-300 cursor-pointer text-left border ${
         isSelected
           ? isDark
-            ? 'bg-zinc-850 shadow-soft-lg ring-2 ring-indigo-500/70'
-            : 'bg-white shadow-soft-lg ring-2 ring-indigo-500/60'
+            ? 'border-indigo-500/80 bg-zinc-900/90 shadow-[0_8px_25px_rgba(99,102,241,0.2)] ring-1 ring-indigo-500/50 backdrop-blur-md'
+            : 'border-indigo-500 bg-white/95 shadow-[0_8px_25px_rgba(99,102,241,0.15)] ring-1 ring-indigo-500/50 backdrop-blur-md'
           : isDark
-          ? 'bg-zinc-900/60 hover:bg-zinc-850/90 shadow-soft-xs hover:shadow-soft-sm'
-          : 'bg-white/80 hover:bg-white shadow-soft-xs hover:shadow-soft-sm'
+          ? 'border-white/10 bg-zinc-900/50 hover:bg-zinc-900/80 hover:border-white/20 hover:shadow-lg hover:-translate-y-0.5 backdrop-blur-sm'
+          : 'border-zinc-200/80 bg-white/80 hover:bg-white hover:border-zinc-300 hover:shadow-md hover:-translate-y-0.5 backdrop-blur-sm'
       }`}
     >
       {/* Top Header: Slide Number + Layout Picker + Duration Badge */}
-      <div className="flex items-center justify-between mb-1.5 px-0.5 relative">
-        <div className="flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-3 px-0.5 relative">
+        <div className="flex items-center gap-2">
           <span
-            className={`w-5 h-5 rounded-lg flex items-center justify-center font-bold text-[10px] tabular-nums transition-colors ${
+            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs tabular-nums transition-colors ${
               isSelected
-                ? 'bg-indigo-500 text-white shadow-soft-xs'
+                ? 'bg-indigo-600 text-white'
                 : isDark
-                ? 'bg-zinc-800 text-zinc-300'
-                : 'bg-zinc-200 text-zinc-700'
+                ? 'bg-zinc-800 text-zinc-200'
+                : 'bg-slate-100 text-slate-700'
             }`}
           >
             {slide.slideNumber}
@@ -258,27 +258,27 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
                 setShowLayoutMenu(!showLayoutMenu);
               }}
               title="Click to change slide layout archetype"
-              className={`flex items-center gap-1 text-[11px] font-semibold px-1.5 py-0.5 rounded-lg transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-lg transition-all cursor-pointer ${
                 isDark
-                  ? 'hover:bg-zinc-750 text-zinc-300 hover:text-white'
-                  : 'hover:bg-zinc-200/80 text-zinc-700 hover:text-zinc-900'
+                  ? 'hover:bg-zinc-800 text-zinc-200 hover:text-white'
+                  : 'hover:bg-slate-100 text-slate-700 hover:text-slate-900'
               }`}
             >
               {getLayoutIcon(slide.layoutType)}
-              <span className="truncate max-w-[105px]">{slide.layoutType}</span>
+              <span className="truncate max-w-[110px]">{slide.layoutType}</span>
             </button>
 
             {/* Layout Archetype Menu Popover */}
             {showLayoutMenu && (
               <div
-                className={`absolute top-full left-0 mt-1 w-48 p-1.5 rounded-2xl shadow-soft-xl z-30 backdrop-blur-xl animate-in fade-in slide-in-from-top-1 ${
-                  isDark ? 'bg-zinc-900/95 text-white' : 'bg-white/95 text-zinc-900'
+                className={`absolute top-full left-0 mt-2 w-52 p-2 rounded-2xl shadow-xl z-30 backdrop-blur-xl border border-slate-200 dark:border-zinc-800 animate-in fade-in slide-in-from-top-1 ${
+                  isDark ? 'bg-zinc-900/95 text-white' : 'bg-white/95 text-slate-900'
                 }`}
               >
-                <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 px-2 py-1">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 px-2.5 py-1.5">
                   Change Layout
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {ALL_LAYOUTS.map((lay) => (
                     <button
                       key={lay.type}
@@ -288,12 +288,12 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
                         if (onUpdateLayout) onUpdateLayout(lay.type);
                         setShowLayoutMenu(false);
                       }}
-                      className={`w-full px-2 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                      className={`w-full px-2.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
                         slide.layoutType === lay.type
                           ? 'bg-indigo-600 text-white font-bold'
                           : isDark
-                          ? 'hover:bg-zinc-800 text-zinc-300'
-                          : 'hover:bg-zinc-100 text-zinc-700'
+                          ? 'hover:bg-zinc-800 text-zinc-200'
+                          : 'hover:bg-slate-100 text-slate-700'
                       }`}
                     >
                       {lay.icon}
@@ -311,30 +311,30 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
           type="button"
           onClick={handleCycleTime}
           title="Click to adjust estimated presentation time"
-          className="text-[10px] font-mono text-zinc-400 hover:text-indigo-400 flex items-center gap-0.5 cursor-pointer px-1 py-0.5 rounded transition-colors"
+          className="text-xs font-mono text-slate-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 flex items-center gap-1 cursor-pointer px-1.5 py-0.5 rounded transition-colors"
         >
-          <Clock className="w-2.5 h-2.5 opacity-60" />
+          <Clock className="w-3 h-3 opacity-75" />
           <span>{slide.estimatedTime}</span>
         </button>
       </div>
 
       {/* 16:9 Miniature Slide Snapshot Preview */}
       <div
-        className={`w-full aspect-[16/9] rounded-xl overflow-hidden mb-2 transition-all relative ${
+        className={`w-full aspect-[16/9] rounded-xl overflow-hidden mb-3 transition-all relative border border-slate-200/60 dark:border-zinc-800/80 ${
           isSelected
             ? isDark
-              ? 'bg-zinc-950 shadow-soft-xs'
-              : 'bg-zinc-100 shadow-soft-xs'
+              ? 'bg-zinc-950'
+              : 'bg-slate-100'
             : isDark
             ? 'bg-zinc-900/90'
-            : 'bg-zinc-50'
+            : 'bg-slate-50'
         }`}
       >
         {renderMiniWireframe()}
       </div>
 
       {/* Title & Headline with Quick In-Place Edit */}
-      <div className="px-0.5">
+      <div className="px-0.5 space-y-1">
         {isEditingTitle ? (
           <form
             onSubmit={handleSaveTitle}
@@ -346,24 +346,24 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
               type="text"
               value={editedTitle}
               onChange={(e) => setEditedTitle(e.target.value)}
-              className={`w-full px-2 py-1 text-xs font-bold rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-soft-xs ${
-                isDark ? 'bg-zinc-950 text-white' : 'bg-zinc-100 text-zinc-900'
+              className={`w-full px-2.5 py-1 text-sm font-semibold rounded-lg border border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                isDark ? 'bg-zinc-950 text-white' : 'bg-white text-slate-900'
               }`}
             />
             <button
               type="submit"
               title="Save Title"
-              className="p-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer shrink-0"
+              className="p-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shrink-0"
             >
-              <Check className="w-3 h-3" />
+              <Check className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={handleCancelTitle}
               title="Cancel"
-              className="p-1 rounded-md bg-zinc-700 text-zinc-300 hover:bg-zinc-600 cursor-pointer shrink-0"
+              className="p-1.5 rounded-md bg-slate-600 text-white hover:bg-slate-700 cursor-pointer shrink-0"
             >
-              <X className="w-3 h-3" />
+              <X className="w-3.5 h-3.5" />
             </button>
           </form>
         ) : (
@@ -374,14 +374,14 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
                 setIsEditingTitle(true);
               }}
               title="Double-click to rename"
-              className={`text-xs font-bold line-clamp-1 flex-1 ${
+              className={`text-sm font-semibold line-clamp-1 flex-1 ${
                 isSelected
                   ? isDark
                     ? 'text-white'
-                    : 'text-zinc-950'
+                    : 'text-slate-900'
                   : isDark
-                  ? 'text-zinc-300'
-                  : 'text-zinc-800'
+                  ? 'text-zinc-200'
+                  : 'text-slate-800'
               }`}
             >
               {slide.title}
@@ -395,23 +395,23 @@ export const SlideThumbnailCard: React.FC<SlideThumbnailCardProps> = ({
                 setIsEditingTitle(true);
               }}
               title="Rename slide"
-              className="opacity-0 group-hover:opacity-100 group-hover/title:opacity-100 p-0.5 rounded text-zinc-400 hover:text-indigo-400 cursor-pointer transition-opacity"
+              className="opacity-0 group-hover:opacity-100 group-hover/title:opacity-100 p-1 rounded text-slate-400 hover:text-indigo-600 cursor-pointer transition-opacity"
             >
-              <Edit2 className="w-2.5 h-2.5" />
+              <Edit2 className="w-3 h-3" />
             </button>
           </div>
         )}
 
-        <p className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">
+        <p className="text-xs text-slate-600 dark:text-zinc-400 line-clamp-1 font-normal">
           {slide.headline}
         </p>
       </div>
 
-      {/* Floating Action Menu on Selection or Hover (Zero solid border, clean elevation) */}
+      {/* Floating Action Menu on Selection or Hover */}
       <div
-        className={`absolute top-2 right-2 flex items-center gap-0.5 transition-opacity p-1 rounded-xl shadow-soft-lg backdrop-blur-xl z-10 ${
+        className={`absolute top-2 right-2 flex items-center gap-1 transition-opacity p-1.5 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-md backdrop-blur-xl z-10 ${
           isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-        } ${isDark ? 'bg-zinc-900/95 text-zinc-300' : 'bg-white/95 text-zinc-700'}`}
+        } ${isDark ? 'bg-zinc-900/95 text-zinc-200' : 'bg-white/95 text-slate-700'}`}
       >
         <button
           type="button"

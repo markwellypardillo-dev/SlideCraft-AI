@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import http from 'http';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -81,6 +82,7 @@ interface DeckResponse {
 
 async function startServer() {
   const app = express();
+  const server = http.createServer(app);
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(express.json({ limit: '30mb' }));
@@ -97,9 +99,9 @@ async function startServer() {
   // Helper for calling Gemini with resilient candidate model cascade
   async function callGeminiContent(contents: string, config: any): Promise<string> {
     const candidateModels = [
+      'gemini-3.1-flash-lite',
       'gemini-3.8-flash',
       'gemini-flash-latest',
-      'gemini-3.1-pro-preview',
     ];
 
     let lastErr: any = null;
@@ -114,10 +116,11 @@ async function startServer() {
           return response.text;
         }
       } catch (err: any) {
-        console.warn(`Gemini candidate model ${model} failed (${err?.message || err}). Trying fallback candidate...`);
         lastErr = err;
       }
     }
+    const errMsg = lastErr?.message || String(lastErr);
+    console.error('[AI Engine] All candidate models failed. Last error:', errMsg);
     throw lastErr || new Error('All Gemini model candidates are currently unavailable.');
   }
 
@@ -447,7 +450,8 @@ Students often isolate these concepts instead of viewing them as a unified ecosy
 
           return res.json(parsed);
         } catch (apiErr: any) {
-          console.warn('Gemini API high demand or model error. Using smart curriculum synthesis engine:', apiErr?.message || apiErr);
+          const isQuota = (apiErr?.message || '').includes('429') || (apiErr?.message || '').includes('quota') || (apiErr?.message || '').includes('RESOURCE_EXHAUSTED');
+          console.log(`[SlideCraft Engine] ${isQuota ? 'Gemini free tier quota threshold reached' : 'Gemini transient fallback'}. Synthesizing presentation via built-in educational curriculum engine.`);
           const fallbackDeck = generateFallbackDeck(content, targetAudience, deckLength, slideTone, colorTheme, illustrationStyle, session, targetSlideCount);
           return res.json(fallbackDeck);
         }
@@ -456,7 +460,7 @@ Students often isolate these concepts instead of viewing them as a unified ecosy
         return res.json(fallbackDeck);
       }
     } catch (error: any) {
-      console.warn('Error generating deck, serving fallback deck:', error);
+      console.log('[SlideCraft Engine] Serving structured curriculum master deck.');
       const fallbackDeck = generateFallbackDeck(content, targetAudience, deckLength, slideTone, colorTheme, illustrationStyle, session, targetSlideCount);
       return res.json(fallbackDeck);
     }
@@ -511,7 +515,7 @@ Output a JSON object with:
           return res.json({
             imagePrompt: parsed.imagePrompt,
             customSvgArt: parsed.customSvgArt,
-            suggestedIcon: parsed.suggestedIcon || slide.visualPrompt?.suggestedIcon || 'Sparkles',
+            suggestedIcon: parsed.suggestedIcon || slide.visualPrompt?.suggestedIcon || 'Lightbulb',
             altText: parsed.altText || slide.visualPrompt?.altText || slide.title,
             illustrationStyle,
           });
@@ -520,7 +524,7 @@ Output a JSON object with:
           return res.json({
             imagePrompt: `${illustrationStyle} showing ${slide.title}, detailed composition, vibrant educational metaphor, 8k.`,
             customSvgArt: fallbackSvg,
-            suggestedIcon: 'Sparkles',
+            suggestedIcon: 'Lightbulb',
             altText: `${illustrationStyle} artwork for ${slide.title}`,
             illustrationStyle,
           });
@@ -531,7 +535,7 @@ Output a JSON object with:
         return res.json({
           imagePrompt: `${illustrationStyle} showing ${slide.title}, detailed composition, vibrant educational metaphor, 8k.`,
           customSvgArt: fallbackSvg,
-          suggestedIcon: 'Sparkles',
+          suggestedIcon: 'Lightbulb',
           altText: `${illustrationStyle} artwork for ${slide.title}`,
           illustrationStyle,
         });
@@ -541,7 +545,7 @@ Output a JSON object with:
       return res.json({
         imagePrompt: `Custom vector visual illustration, detailed composition, 8k.`,
         customSvgArt: fallbackSvg,
-        suggestedIcon: 'Sparkles',
+        suggestedIcon: 'Lightbulb',
         altText: `Artwork for slide`,
         illustrationStyle: req.body?.illustrationStyle || 'Cartoon & Playful Illustration',
       });
@@ -721,6 +725,202 @@ Include natural spoken cues, warm teacher voice, an engaging hook, concise summa
     }
   });
 
+  // Educator Toolkit AI Generator (Lesson Plans, Rubrics, Differentiation, Emergency Sub Plans)
+  app.post('/api/generate-educator-tool', async (req: Request, res: Response) => {
+    try {
+      const {
+        toolType = 'lesson_plan',
+        topic = 'Instructional Mastery & Critical Thinking',
+        subject = 'Curriculum & Instruction',
+        gradeLevel = 'Senior High School (Grades 11-12)',
+        framework = '5E Model',
+        assessmentType = 'Oral Presentation',
+        teacherName = 'Master Educator',
+        roomNumber = 'Room 204',
+        deckSummary = '',
+      } = req.body || {};
+
+      if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY') {
+        try {
+          if (toolType === 'lesson_plan') {
+            const prompt = `You are a master teacher and curriculum instructional designer.
+Create an exhaustive, professional, compliant Lesson Plan based on:
+TOPIC: "${topic}"
+SUBJECT: "${subject}"
+GRADE LEVEL: "${gradeLevel}"
+FRAMEWORK: "${framework}"
+${deckSummary ? `ACTIVE PRESENTATION SLIDE DETAILS: "${deckSummary}"` : ''}
+
+Output a strictly valid JSON object matching this schema:
+{
+  "title": string,
+  "subject": string,
+  "gradeLevel": string,
+  "durationMinutes": number,
+  "framework": "${framework}",
+  "standards": string (e.g. NGSS / Common Core standard notation),
+  "essentialQuestion": string,
+  "objectives": string[] (3 measurable SWBAT statements),
+  "materials": string[] (4-5 concrete items including the presentation deck),
+  "agenda": [
+    {
+      "phase": string (e.g. 1. Engage, 2. Explore, 3. Explain, 4. Elaborate, 5. Evaluate),
+      "time": string (e.g. "8 mins"),
+      "teacherAction": string (detailed step-by-step instructions),
+      "studentAction": string (what students are doing, writing, or discussing),
+      "pedagogicalTip": string (specific classroom cue or check for understanding)
+    }
+  ],
+  "exitTicket": string (concrete 2-question formative assessment),
+  "differentiationNote": string
+}`;
+
+            const raw = await callGeminiContent(prompt, {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            });
+            const parsed = JSON.parse(raw);
+            return res.json(parsed);
+          }
+
+          if (toolType === 'rubric') {
+            const prompt = `You are an expert assessment specialist.
+Generate a comprehensive 4-Tier Analytic Rubric for evaluating student work:
+TOPIC: "${topic}"
+ASSESSMENT TYPE: "${assessmentType}"
+GRADE LEVEL: "${gradeLevel}"
+${deckSummary ? `CURRICULAR CONTEXT: "${deckSummary}"` : ''}
+
+Output a strictly valid JSON object matching this schema:
+{
+  "title": string,
+  "subject": string,
+  "assessmentType": "${assessmentType}",
+  "maxScore": 16,
+  "criteria": [
+    {
+      "id": string,
+      "category": string (e.g. Conceptual Depth, Evidence & Data, Structure & Visual Clarity, Delivery & Q&A),
+      "weightPercentage": number,
+      "levels": [
+        { "score": 1, "label": "Beginning", "descriptor": string },
+        { "score": 2, "label": "Developing", "descriptor": string },
+        { "score": 3, "label": "Proficient", "descriptor": string },
+        { "score": 4, "label": "Exemplary", "descriptor": string }
+      ]
+    }
+  ]
+}`;
+
+            const raw = await callGeminiContent(prompt, {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            });
+            const parsed = JSON.parse(raw);
+            return res.json(parsed);
+          }
+
+          if (toolType === 'differentiation') {
+            const prompt = `You are an expert in Universal Design for Learning (UDL), Special Education (IEP/504), and English Language Learner (ELL) instruction.
+Generate comprehensive differentiated instruction materials for:
+TOPIC: "${topic}"
+GRADE LEVEL: "${gradeLevel}"
+${deckSummary ? `CURRICULAR CONTEXT: "${deckSummary}"` : ''}
+
+Output a strictly valid JSON object matching this schema:
+{
+  "topic": string,
+  "gradeLevel": string,
+  "tiers": [
+    {
+      "tierName": "Tier 1: Scaffolded Support",
+      "targetLearners": string,
+      "activityPrompt": string,
+      "scaffolds": string[]
+    },
+    {
+      "tierName": "Tier 2: Core Mastery",
+      "targetLearners": string,
+      "activityPrompt": string,
+      "scaffolds": string[]
+    },
+    {
+      "tierName": "Tier 3: Advanced Inquiry",
+      "targetLearners": string,
+      "activityPrompt": string,
+      "scaffolds": string[]
+    }
+  ],
+  "vocabularyBridge": [
+    {
+      "term": string,
+      "simpleDefinition": string,
+      "contextClue": string,
+      "spanish": string,
+      "tagalog": string
+    }
+  ],
+  "iepAccommodations": string[]
+}`;
+
+            const raw = await callGeminiContent(prompt, {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            });
+            const parsed = JSON.parse(raw);
+            return res.json(parsed);
+          }
+
+          if (toolType === 'sub_plan') {
+            const prompt = `You are a school administrator and veteran teacher.
+Generate a complete, foolproof 1-Day Emergency Substitute Teacher Plan:
+TOPIC: "${topic}"
+TEACHER NAME: "${teacherName}"
+ROOM: "${roomNumber}"
+${deckSummary ? `CURRICULAR DETAILS: "${deckSummary}"` : ''}
+
+Output a strictly valid JSON object matching this schema:
+{
+  "teacherName": "${teacherName}",
+  "date": string,
+  "roomNumber": "${roomNumber}",
+  "emergencyPhone": string,
+  "subTeacherWelcome": string,
+  "periods": [
+    {
+      "period": string,
+      "timeRange": string,
+      "courseName": string,
+      "slideDeckTopic": string,
+      "subInstructions": string[],
+      "studentHandoutTask": string
+    }
+  ],
+  "studentHelpers": string[],
+  "classroomManagementRules": string[],
+  "feedbackForTeacherNote": string
+}`;
+
+            const raw = await callGeminiContent(prompt, {
+              responseMimeType: 'application/json',
+              temperature: 0.3,
+            });
+            const parsed = JSON.parse(raw);
+            return res.json(parsed);
+          }
+        } catch (apiErr: any) {
+          console.warn('[Educator Toolkit API] Gemini fallback triggered:', apiErr?.message);
+        }
+      }
+
+      // Return signal to client to use rich pedagogical defaults
+      return res.status(200).json({ status: 'fallback_ready' });
+    } catch (err: any) {
+      console.error('[Educator Toolkit API Error]', err);
+      res.status(500).json({ error: err.message || 'Failed to process educator tool.' });
+    }
+  });
+
   // Setup Vite or static serving
   if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.resolve(__dirname, 'dist')));
@@ -729,13 +929,19 @@ Include natural spoken cues, warm teacher voice, an engaging hook, concise summa
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        allowedHosts: true,
+        hmr: {
+          server,
+        },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  server.listen(PORT, '0.0.0.0', () => {
     console.log(`SlideCraft AI Studio server running at http://localhost:${PORT}`);
   });
 }
@@ -1150,7 +1356,7 @@ Students frequently assume this principle operates in isolation. Clarify that it
         imagePrompt: `${illustrationStyle} showing ${slideTitle} for ${cleanTitle}, widescreen 16:9 aspect ratio, clean studio lighting, high contrast visual metaphor, 8k resolution.`,
         recommendedPlacement: isFirst ? 'Right 50% split' : isLast ? 'Full bleed background with 70% dark overlay' : 'Right 50% split',
         designInstructions: `Presentation layout formatted with 24px container margins and high-contrast typography aligned with ${palette.name}.`,
-        suggestedIcon: isFirst ? 'Sparkles' : isLast ? 'Award' : 'Layers',
+        suggestedIcon: isFirst ? 'BookOpen' : isLast ? 'Award' : 'Layers',
         altText: `${illustrationStyle} visual representation illustrating ${slideTitle}.`,
         illustrationStyle: illustrationStyle as any,
         customSvgArt: createFallbackSvgIllustration(slideTitle, illustrationStyle),

@@ -120,6 +120,7 @@ export interface SlideDeck {
 
 export type ActiveNavTab =
   | 'generator'
+  | 'educator_toolkit'
   | 'visual_blueprint'
   | 'assessments'
   | 'curriculum_library'
@@ -127,4 +128,98 @@ export type ActiveNavTab =
   | 'export_settings';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+/* =========================================================================
+   EDUCATOR TOOLKIT TYPES (Teacher Suite)
+   ========================================================================= */
+
+export type LessonPlanFramework = '5E Model' | 'UbD (Backward Design)' | 'Direct Instruction (Hunter)';
+
+export interface LessonPlanSection {
+  phase: string;
+  time: string;
+  teacherAction: string;
+  studentAction: string;
+  pedagogicalTip?: string;
+}
+
+export interface LessonPlanData {
+  title: string;
+  subject: string;
+  gradeLevel: string;
+  durationMinutes: number;
+  framework: LessonPlanFramework;
+  standards: string;
+  essentialQuestion: string;
+  objectives: string[];
+  materials: string[];
+  agenda: LessonPlanSection[];
+  exitTicket: string;
+  differentiationNote: string;
+}
+
+export interface RubricLevel {
+  score: number;
+  label: 'Beginning' | 'Developing' | 'Proficient' | 'Exemplary';
+  descriptor: string;
+}
+
+export interface RubricCriterion {
+  id: string;
+  category: string;
+  weightPercentage: number;
+  levels: RubricLevel[];
+}
+
+export interface RubricData {
+  title: string;
+  subject: string;
+  assessmentType: 'Oral Presentation' | 'Research Project' | 'Science Lab Report' | 'STEM & Coding' | 'Creative Slide Deck';
+  maxScore: number;
+  criteria: RubricCriterion[];
+}
+
+export interface DifferentiationTier {
+  tierName: 'Tier 1: Scaffolded Support' | 'Tier 2: Core Mastery' | 'Tier 3: Advanced Inquiry';
+  targetLearners: string;
+  activityPrompt: string;
+  scaffolds: string[];
+}
+
+export interface VocabularyBridgeItem {
+  term: string;
+  simpleDefinition: string;
+  contextClue: string;
+  spanish: string;
+  tagalog: string;
+}
+
+export interface DifferentiationData {
+  topic: string;
+  gradeLevel: string;
+  tiers: DifferentiationTier[];
+  vocabularyBridge: VocabularyBridgeItem[];
+  iepAccommodations: string[];
+}
+
+export interface SubPlanPeriod {
+  period: string;
+  timeRange: string;
+  courseName: string;
+  slideDeckTopic: string;
+  subInstructions: string[];
+  studentHandoutTask: string;
+}
+
+export interface SubPlanData {
+  teacherName: string;
+  date: string;
+  roomNumber: string;
+  emergencyPhone: string;
+  subTeacherWelcome: string;
+  periods: SubPlanPeriod[];
+  studentHelpers: string[];
+  classroomManagementRules: string[];
+  feedbackForTeacherNote: string;
+}
 

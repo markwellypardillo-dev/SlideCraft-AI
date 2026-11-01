@@ -93,7 +93,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({ deck, onClose, isDark 
               <div>
                 <div className="flex items-center gap-2">
                   <h4 className={`font-bold text-xs ${isDark ? 'text-white' : 'text-zinc-900'}`}>PowerPoint (.pptx)</h4>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-400">
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
                     Native Artwork Embedded
                   </span>
                 </div>

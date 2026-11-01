@@ -51,6 +51,7 @@ import { AccessibilityDrawer } from './components/AccessibilityDrawer';
 import { AuthModal } from './components/AuthModal';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AdminWorkspaceSelectorModal } from './components/AdminWorkspaceSelectorModal';
+import { EducatorToolkitHub } from './components/EducatorToolkitHub';
 
 export default function App() {
   // Theme Mode: 'light' | 'dark' | 'system'
@@ -63,20 +64,29 @@ export default function App() {
   });
 
   const [systemPrefersDark, setSystemPrefersDark] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      try {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      } catch {}
     }
     return true;
   });
 
   // Listen to OS-level dark/light mode preference changes
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    setSystemPrefersDark(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+    try {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setSystemPrefersDark(mediaQuery.matches);
+      const handler = (e: MediaQueryListEvent) => setSystemPrefersDark(e.matches);
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+      } else if (typeof (mediaQuery as any).addListener === 'function') {
+        (mediaQuery as any).addListener(handler);
+        return () => (mediaQuery as any).removeListener(handler);
+      }
+    } catch {}
   }, []);
 
   const isDark = themeMode === 'system' ? systemPrefersDark : themeMode === 'dark';
@@ -969,105 +979,10 @@ Students often forget that chloroplasts have their OWN circular DNA and double m
         </div>
       </div>
 
-      {/* Primary Workspace Viewport: Offset by 80px left rail on md+, pt-16 on mobile for fixed header */}
-      <main className="md:pl-20 pt-16 md:pt-0 min-h-screen transition-all duration-300">
-        {/* Top Floating Admin Quick Switcher Bar (Desktop) */}
-        {isAdmin && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-            <div className={`p-2.5 px-4 rounded-2xl shadow-soft-sm flex flex-wrap items-center justify-between gap-3 transition-all ${
-              isDark ? 'bg-zinc-900/90 text-white' : 'bg-white text-zinc-900'
-            }`}>
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse shrink-0" />
-                <span className="text-xs font-extrabold flex items-center gap-1.5 truncate">
-                  <ShieldCheck className="w-4 h-4 text-purple-400 shrink-0" />
-                  <span className="hidden sm:inline">Administrator Privileges:</span>
-                  <span className="font-mono text-purple-400 font-semibold truncate">{currentUser?.email}</span>
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* 3-way Theme Selector in Desktop Header */}
-                <div className={`hidden sm:flex rounded-xl p-0.5 shadow-soft-xs ${isDark ? 'bg-zinc-950' : 'bg-zinc-100'}`}>
-                  <button
-                    onClick={() => setThemeMode('light')}
-                    className={`p-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      themeMode === 'light'
-                        ? 'bg-white text-zinc-900 shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="Light Theme"
-                  >
-                    <Sun className="w-3.5 h-3.5" />
-                    <span className="text-[11px]">Light</span>
-                  </button>
-                  <button
-                    onClick={() => setThemeMode('system')}
-                    className={`p-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      themeMode === 'system'
-                        ? isDark ? 'bg-zinc-800 text-white shadow-soft-xs' : 'bg-white text-zinc-900 shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="System Auto Theme"
-                  >
-                    <Monitor className="w-3.5 h-3.5" />
-                    <span className="text-[11px]">Auto</span>
-                  </button>
-                  <button
-                    onClick={() => setThemeMode('dark')}
-                    className={`p-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      themeMode === 'dark'
-                        ? isDark ? 'bg-zinc-800 text-white shadow-soft-xs' : 'bg-zinc-900 text-white shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-500 hover:text-zinc-900'
-                    }`}
-                    title="Dark Theme"
-                  >
-                    <Moon className="w-3.5 h-3.5" />
-                    <span className="text-[11px]">Dark</span>
-                  </button>
-                </div>
-
-                <button
-                  onClick={() => setIsWorkspaceSelectorOpen(true)}
-                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                    isDark ? 'hover:bg-zinc-800 text-zinc-300' : 'hover:bg-zinc-100 text-zinc-700'
-                  }`}
-                >
-                  Switch Workspace
-                </button>
-
-                <div className={`flex rounded-xl p-0.5 shadow-soft-xs ${isDark ? 'bg-zinc-950' : 'bg-zinc-100'}`}>
-                  <button
-                    onClick={() => setWorkspaceMode('admin')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      workspaceMode === 'admin'
-                        ? 'bg-purple-600 text-white shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
-                    }`}
-                  >
-                    <Activity className="w-3.5 h-3.5" />
-                    <span>Admin Console</span>
-                  </button>
-
-                  <button
-                    onClick={() => setWorkspaceMode('studio')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                      workspaceMode === 'studio'
-                        ? 'bg-indigo-600 text-white shadow-soft-xs'
-                        : isDark ? 'text-zinc-400 hover:text-white' : 'text-zinc-600 hover:text-zinc-900'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>Studio Dashboard</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
+      {/* Primary Workspace Viewport: Offset by 112px for floating spatial pill on md+, pt-16 on mobile for fixed header */}
+      <main className="md:pl-28 pt-16 md:pt-6 min-h-screen transition-all duration-300">
         {/* WORKSPACE VIEW: ADMIN vs NORMAL STUDIO */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {workspaceMode === 'admin' && isAdmin ? (
             <AdminDashboard
               isDark={isDark}
@@ -1132,6 +1047,15 @@ Students often forget that chloroplasts have their OWN circular DNA and double m
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* TAB: EDUCATOR TOOLKIT (Lesson Plans, Rubrics, Differentiation & Sub Plans) */}
+              {activeTab === 'educator_toolkit' && (
+                <EducatorToolkitHub
+                  deck={currentDeck}
+                  isDark={isDark}
+                  onOpenDeckGenerator={() => handleSelectTabWithHistory('generator')}
+                />
               )}
 
               {/* TAB 2: VISUAL BLUEPRINT & IMAGE PROMPTER GALLERY */}
